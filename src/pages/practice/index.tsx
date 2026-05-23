@@ -1,3 +1,4 @@
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import Loader from "@components/loader";
 import PracticeConfigController from "@controllers/practiceConfig";
 import type {
@@ -11,13 +12,10 @@ import type {
 } from "@helpers/types/backend";
 import LevelProgressionModal from "@modals/LevelProgressionModal";
 import PracticeLevelModal from "@modals/PracticeLevelModal";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
-  Image,
   InputNumber,
-  Popover,
   Space,
   Table,
   Tabs,
@@ -88,36 +86,36 @@ export default function Practice() {
           a.level - b.level,
       },
       { title: "Name", dataIndex: "name" as const, ellipsis: true },
-      {
-        title: "Original",
-        dataIndex: "referenceUri" as const,
-        width: 100,
-        render: (uri: string) => (
-          <Popover content={<Image src={uri} width={280} alt="" />}>
-            <img
-              src={uri}
-              alt=""
-              className="h-12 w-20 rounded object-cover"
-              title="Original"
-            />
-          </Popover>
-        ),
-      },
-      {
-        title: "With differences",
-        dataIndex: "imageUri" as const,
-        width: 120,
-        render: (uri: string) => (
-          <Popover content={<Image src={uri} width={280} alt="" />}>
-            <img
-              src={uri}
-              alt=""
-              className="h-12 w-20 rounded object-cover"
-              title="Playfield"
-            />
-          </Popover>
-        ),
-      },
+      // {
+      //   title: "Original",
+      //   dataIndex: "referenceUri" as const,
+      //   width: 100,
+      //   render: (uri: string) => (
+      //     <Popover content={<Image src={uri} width={280} alt="" />}>
+      //       <img
+      //         src={uri}
+      //         alt=""
+      //         className="h-12 w-20 rounded object-cover"
+      //         title="Original"
+      //       />
+      //     </Popover>
+      //   ),
+      // },
+      // {
+      //   title: "With differences",
+      //   dataIndex: "imageUri" as const,
+      //   width: 120,
+      //   render: (uri: string) => (
+      //     <Popover content={<Image src={uri} width={280} alt="" />}>
+      //       <img
+      //         src={uri}
+      //         alt=""
+      //         className="h-12 w-20 rounded object-cover"
+      //         title="Playfield"
+      //       />
+      //     </Popover>
+      //   ),
+      // },
       {
         title: "Difficulty",
         dataIndex: "difficulty" as const,

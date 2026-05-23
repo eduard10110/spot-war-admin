@@ -1,11 +1,23 @@
-import DifferenceImageMarker from '@components/DifferenceImageMarker';
-import type { SpotMarker } from '@components/DifferenceImageMarker';
-import PracticeConfigController from '@controllers/practiceConfig';
-import StorageUpload from '@controllers/storageUpload';
-import type { PracticeLevelCatalog } from '@helpers/types/backend';
-import { UploadOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Modal, Select, Typography, Upload } from 'antd';
-import { useRef, useState } from 'react';
+import DifferenceImageMarker, {
+  differenceImageClass,
+  differenceImageFrameClass,
+} from "@components/DifferenceImageMarker";
+import type { SpotMarker } from "@components/DifferenceImageMarker";
+import PracticeConfigController from "@controllers/practiceConfig";
+import StorageUpload from "@controllers/storageUpload";
+import type { PracticeLevelCatalog } from "@helpers/types/backend";
+import { UploadOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Typography,
+  Upload,
+} from "antd";
+import { useRef, useState, type MutableRefObject } from "react";
 
 export interface PracticeLevelModalProps {
   open: boolean;
@@ -16,28 +28,67 @@ export interface PracticeLevelModalProps {
 
 const { Text } = Typography;
 
-export default function PracticeLevelModal({ open, initial, onClose, onSaved }: PracticeLevelModalProps) {
+function LevelImagePreview({
+  src,
+  label,
+}: {
+  src: string | null;
+  label: string;
+}) {
+  if (!src) return null;
+  return (
+    <div className="space-y-2">
+      <Text type="secondary" className="block text-xs">
+        {label}
+      </Text>
+      <div className={differenceImageFrameClass}>
+        <img src={src} alt={label} className={differenceImageClass} />
+      </div>
+    </div>
+  );
+}
+
+export default function PracticeLevelModal({
+  open,
+  initial,
+  onClose,
+  onSaved,
+}: PracticeLevelModalProps) {
   const [form] = Form.useForm<PracticeLevelCatalog>();
   const [submitting, setSubmitting] = useState(false);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [differencesFile, setDifferencesFile] = useState<File | null>(null);
+  const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const [playfieldPreview, setPlayfieldPreview] = useState<string | null>(null);
   const [markers, setMarkers] = useState<SpotMarker[]>([]);
-  const blobUrlRef = useRef<string | null>(null);
+  const referenceBlobRef = useRef<string | null>(null);
+  const playfieldBlobRef = useRef<string | null>(null);
 
-  const revokePlayfieldBlob = () => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
+  const revokeBlob = (ref: MutableRefObject<string | null>) => {
+    if (ref.current) {
+      URL.revokeObjectURL(ref.current);
+      ref.current = null;
+    }
+  };
+
+  const setReferenceFile = (file: File | null) => {
+    revokeBlob(referenceBlobRef);
+    setOriginalFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      referenceBlobRef.current = url;
+      setReferencePreview(url);
+    } else {
+      setReferencePreview(initial?.referenceUri ?? null);
     }
   };
 
   const setPlayfieldFile = (file: File | null) => {
-    revokePlayfieldBlob();
+    revokeBlob(playfieldBlobRef);
     setDifferencesFile(file);
     if (file) {
       const url = URL.createObjectURL(file);
-      blobUrlRef.current = url;
+      playfieldBlobRef.current = url;
       setPlayfieldPreview(url);
       setMarkers([]);
     } else {
@@ -47,28 +98,34 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
 
   const syncFormWhenOpened = (visible: boolean) => {
     if (!visible) {
-      revokePlayfieldBlob();
+      revokeBlob(referenceBlobRef);
+      revokeBlob(playfieldBlobRef);
       setOriginalFile(null);
       setDifferencesFile(null);
       return;
     }
     setOriginalFile(null);
     setDifferencesFile(null);
-    revokePlayfieldBlob();
+    revokeBlob(referenceBlobRef);
+    revokeBlob(playfieldBlobRef);
     const row = initial;
     if (row) {
       form.setFieldsValue(row);
-      setMarkers(row.differences?.length ? row.differences.map((d) => ({ ...d })) : []);
+      setMarkers(
+        row.differences?.length ? row.differences.map((d) => ({ ...d })) : [],
+      );
+      setReferencePreview(row.referenceUri);
       setPlayfieldPreview(row.imageUri);
     } else {
       form.resetFields();
       form.setFieldsValue({
-        difficulty: 'easy',
+        difficulty: "easy",
         timeLimitSec: 90,
-        imageUri: '',
-        referenceUri: '',
+        imageUri: "",
+        referenceUri: "",
       });
       setMarkers([]);
+      setReferencePreview(null);
       setPlayfieldPreview(null);
     }
   };
@@ -78,41 +135,51 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
 
     if (markers.length < 1) {
       Modal.warning({
-        title: 'Mark difference spots',
-        content: 'Click on the playfield image to add at least one spot.',
+        title: "Mark difference spots",
+        content: "Click on the playfield image to add at least one spot.",
       });
       return;
     }
 
-    let imageUri = values.imageUri?.trim() ?? '';
-    let referenceUri = values.referenceUri?.trim() ?? '';
+    let imageUri = values.imageUri?.trim() ?? "";
+    let referenceUri = values.referenceUri?.trim() ?? "";
 
     if (differencesFile) {
-      imageUri = await StorageUpload.practiceLevelImage(values.level, differencesFile, 'differences');
+      imageUri = await StorageUpload.practiceLevelImage(
+        values.level,
+        differencesFile,
+        "differences",
+      );
     }
     if (originalFile) {
-      referenceUri = await StorageUpload.practiceLevelImage(values.level, originalFile, 'original');
+      referenceUri = await StorageUpload.practiceLevelImage(
+        values.level,
+        originalFile,
+        "original",
+      );
     }
 
     const isEdit = Boolean(initial);
     if (!isEdit && (!originalFile || !differencesFile)) {
       Modal.warning({
-        title: 'Two images required',
-        content: 'Upload the original image and the image with differences separately.',
+        title: "Two images required",
+        content:
+          "Upload the original image and the image with differences separately.",
       });
       return;
     }
     if (isEdit && !imageUri) {
       Modal.warning({
-        title: 'Playfield image missing',
-        content: 'Upload the “with differences” image or keep the existing asset.',
+        title: "Playfield image missing",
+        content:
+          "Upload the “with differences” image or keep the existing asset.",
       });
       return;
     }
     if (isEdit && !referenceUri) {
       Modal.warning({
-        title: 'Original image missing',
-        content: 'Upload the original image or keep the existing asset.',
+        title: "Original image missing",
+        content: "Upload the original image or keep the existing asset.",
       });
       return;
     }
@@ -136,7 +203,7 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
 
   return (
     <Modal
-      title={initial ? `Edit level ${initial.level}` : 'Add practice level'}
+      title={initial ? `Edit level ${initial.level}` : "Add practice level"}
       open={open}
       afterOpenChange={syncFormWhenOpened}
       onCancel={onClose}
@@ -146,7 +213,8 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
       destroyOnClose
     >
       <Text type="secondary" className="mb-4 block text-sm">
-        Upload the <strong>original</strong> and <strong>with-differences</strong> images, then click the playfield to
+        Upload the <strong>original</strong> and{" "}
+        <strong>with-differences</strong> images, then click the playfield to
         place every spot players must find (percent coordinates).
       </Text>
       <Form form={form} layout="vertical" className="mt-2">
@@ -157,28 +225,39 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
           <Input placeholder="Practice 1" />
         </Form.Item>
 
+        {(referencePreview || playfieldPreview) && (
+          <div className="mb-4 space-y-4">
+            <LevelImagePreview
+              src={referencePreview}
+              label="Original (reference)"
+            />
+            <LevelImagePreview
+              src={playfieldPreview}
+              label="With differences (playfield)"
+            />
+          </div>
+        )}
+
         <Form.Item label="Original image (reference)" required={!initial}>
           <Upload
             maxCount={1}
             accept="image/*"
             beforeUpload={(f) => {
-              setOriginalFile(f);
+              setReferenceFile(f);
               return false;
             }}
-            onRemove={() => setOriginalFile(null)}
+            onRemove={() => setReferenceFile(null)}
           >
             <Button icon={<UploadOutlined />}>
-              {initial?.referenceUri ? 'Replace original…' : 'Upload original…'}
+              {referencePreview ? "Replace original…" : "Upload original…"}
             </Button>
           </Upload>
-          {initial?.referenceUri ? (
-            <Text type="secondary" className="mt-1 block text-xs">
-              Current: {initial.referenceUri.slice(0, 48)}…
-            </Text>
-          ) : null}
         </Form.Item>
 
-        <Form.Item label="Image with differences (playfield)" required={!initial}>
+        <Form.Item
+          label="Image with differences (playfield)"
+          required={!initial}
+        >
           <Upload
             maxCount={1}
             accept="image/*"
@@ -189,14 +268,11 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
             onRemove={() => setPlayfieldFile(null)}
           >
             <Button icon={<UploadOutlined />}>
-              {initial?.imageUri ? 'Replace playfield…' : 'Upload with differences…'}
+              {playfieldPreview
+                ? "Replace playfield…"
+                : "Upload with differences…"}
             </Button>
           </Upload>
-          {initial?.imageUri ? (
-            <Text type="secondary" className="mt-1 block text-xs">
-              Current: {initial.imageUri.slice(0, 48)}…
-            </Text>
-          ) : null}
         </Form.Item>
 
         <Form.Item name="referenceUri" hidden>
@@ -213,16 +289,24 @@ export default function PracticeLevelModal({ open, initial, onClose, onSaved }: 
           onChange={setMarkers}
         />
 
-        <Form.Item name="difficulty" label="Difficulty" rules={[{ required: true }]}>
+        <Form.Item
+          name="difficulty"
+          label="Difficulty"
+          rules={[{ required: true }]}
+        >
           <Select
             options={[
-              { value: 'easy', label: 'Easy' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'hard', label: 'Hard' },
+              { value: "easy", label: "Easy" },
+              { value: "medium", label: "Medium" },
+              { value: "hard", label: "Hard" },
             ]}
           />
         </Form.Item>
-        <Form.Item name="timeLimitSec" label="Time limit (seconds)" rules={[{ required: true }]}>
+        <Form.Item
+          name="timeLimitSec"
+          label="Time limit (seconds)"
+          rules={[{ required: true }]}
+        >
           <InputNumber min={10} max={600} className="w-full" />
         </Form.Item>
       </Form>

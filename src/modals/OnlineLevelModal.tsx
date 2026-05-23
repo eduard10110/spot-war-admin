@@ -1,10 +1,13 @@
-import DifferenceImageMarker from '@components/DifferenceImageMarker';
+import DifferenceImageMarker, {
+  differenceImageClass,
+  differenceImageFrameClass,
+} from '@components/DifferenceImageMarker';
 import type { SpotMarker } from '@components/DifferenceImageMarker';
 import OnlineGameController from '@controllers/onlineGame';
 import type { OnlineGameLevel } from '@helpers/types/backend';
 import { UploadOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Modal, Switch, Typography, Upload } from 'antd';
-import { useRef, useState } from 'react';
+import { useRef, useState, type MutableRefObject } from 'react';
 
 export interface OnlineLevelModalProps {
   open: boolean;
@@ -20,6 +23,26 @@ export interface OnlineLevelFormValues extends Omit<OnlineGameLevel, 'id' | 'upd
 
 const { Text } = Typography;
 
+function LevelImagePreview({
+  src,
+  label,
+}: {
+  src: string | null;
+  label: string;
+}) {
+  if (!src) return null;
+  return (
+    <div className="space-y-2">
+      <Text type="secondary" className="block text-xs">
+        {label}
+      </Text>
+      <div className={differenceImageFrameClass}>
+        <img src={src} alt={label} className={differenceImageClass} />
+      </div>
+    </div>
+  );
+}
+
 export default function OnlineLevelModal({
   open,
   initial,
@@ -31,23 +54,37 @@ export default function OnlineLevelModal({
   const [submitting, setSubmitting] = useState(false);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [differencesFile, setDifferencesFile] = useState<File | null>(null);
+  const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const [playfieldPreview, setPlayfieldPreview] = useState<string | null>(null);
   const [markers, setMarkers] = useState<SpotMarker[]>([]);
-  const blobUrlRef = useRef<string | null>(null);
+  const referenceBlobRef = useRef<string | null>(null);
+  const playfieldBlobRef = useRef<string | null>(null);
 
-  const revokePlayfieldBlob = () => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
+  const revokeBlob = (ref: MutableRefObject<string | null>) => {
+    if (ref.current) {
+      URL.revokeObjectURL(ref.current);
+      ref.current = null;
+    }
+  };
+
+  const setReferenceFile = (file: File | null) => {
+    revokeBlob(referenceBlobRef);
+    setOriginalFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      referenceBlobRef.current = url;
+      setReferencePreview(url);
+    } else {
+      setReferencePreview(initial?.referenceUri ?? null);
     }
   };
 
   const setPlayfieldFile = (file: File | null) => {
-    revokePlayfieldBlob();
+    revokeBlob(playfieldBlobRef);
     setDifferencesFile(file);
     if (file) {
       const url = URL.createObjectURL(file);
-      blobUrlRef.current = url;
+      playfieldBlobRef.current = url;
       setPlayfieldPreview(url);
       setMarkers([]);
     } else {
@@ -57,18 +94,21 @@ export default function OnlineLevelModal({
 
   const syncFormWhenOpened = (visible: boolean) => {
     if (!visible) {
-      revokePlayfieldBlob();
+      revokeBlob(referenceBlobRef);
+      revokeBlob(playfieldBlobRef);
       setOriginalFile(null);
       setDifferencesFile(null);
       return;
     }
     setOriginalFile(null);
     setDifferencesFile(null);
-    revokePlayfieldBlob();
+    revokeBlob(referenceBlobRef);
+    revokeBlob(playfieldBlobRef);
     const row = initial;
     if (row) {
       form.setFieldsValue({ ...row });
       setMarkers(row.differences?.length ? row.differences.map((d) => ({ ...d })) : []);
+      setReferencePreview(row.referenceUri);
       setPlayfieldPreview(row.imageUri);
     } else {
       form.resetFields();
@@ -81,6 +121,7 @@ export default function OnlineLevelModal({
         referenceUri: '',
       });
       setMarkers([]);
+      setReferencePreview(null);
       setPlayfieldPreview(null);
     }
   };
@@ -190,25 +231,33 @@ export default function OnlineLevelModal({
           <Input />
         </Form.Item>
 
+        {(referencePreview || playfieldPreview) && (
+          <div className="mb-4 space-y-4">
+            <LevelImagePreview
+              src={referencePreview}
+              label="Original (reference)"
+            />
+            <LevelImagePreview
+              src={playfieldPreview}
+              label="With differences (playfield)"
+            />
+          </div>
+        )}
+
         <Form.Item label="Original image (reference)" required={!initial}>
           <Upload
             maxCount={1}
             accept="image/*"
             beforeUpload={(f) => {
-              setOriginalFile(f);
+              setReferenceFile(f);
               return false;
             }}
-            onRemove={() => setOriginalFile(null)}
+            onRemove={() => setReferenceFile(null)}
           >
             <Button icon={<UploadOutlined />}>
-              {initial?.referenceUri ? 'Replace original…' : 'Upload original…'}
+              {referencePreview ? 'Replace original…' : 'Upload original…'}
             </Button>
           </Upload>
-          {initial?.referenceUri ? (
-            <Text type="secondary" className="mt-1 block text-xs">
-              Current: {initial.referenceUri.slice(0, 48)}…
-            </Text>
-          ) : null}
         </Form.Item>
 
         <Form.Item label="Image with differences (playfield)" required={!initial}>
@@ -222,14 +271,9 @@ export default function OnlineLevelModal({
             onRemove={() => setPlayfieldFile(null)}
           >
             <Button icon={<UploadOutlined />}>
-              {initial?.imageUri ? 'Replace playfield…' : 'Upload with differences…'}
+              {playfieldPreview ? 'Replace playfield…' : 'Upload with differences…'}
             </Button>
           </Upload>
-          {initial?.imageUri ? (
-            <Text type="secondary" className="mt-1 block text-xs">
-              Current: {initial.imageUri.slice(0, 48)}…
-            </Text>
-          ) : null}
         </Form.Item>
 
         <Form.Item name="referenceUri" hidden>

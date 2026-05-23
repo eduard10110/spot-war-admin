@@ -4,6 +4,13 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 const { Text } = Typography;
 
+/** Shared frame + image sizing for playfield previews (modal thumbnails, marker tool). */
+export const differenceImageFrameClass =
+  "relative mx-auto max-w-full overflow-hidden rounded-lg border-2 border-violet-200 bg-slate-900/5";
+
+export const differenceImageClass =
+  "block max-h-[min(360px,50vh)] w-full object-contain";
+
 export interface SpotMarker {
   id: number;
   /** Percentage of the IMAGE CONTENT width  (0–100). */
@@ -141,7 +148,7 @@ export default function DifferenceImageMarker({
       {/* Wrapper div — click target */}
       <div
         role="presentation"
-        className="relative mx-auto max-w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-violet-200 bg-slate-900/5"
+        className={`${differenceImageFrameClass} cursor-crosshair`}
         onClick={onImageClick}
       >
         {/* The image fills the wrapper with object-contain */}
@@ -149,7 +156,7 @@ export default function DifferenceImageMarker({
           ref={imgRef}
           src={imageUrl}
           alt="Playfield — click to mark differences"
-          className="block max-h-[min(360px,50vh)] w-full object-contain"
+          className={differenceImageClass}
           draggable={false}
           onLoad={computeFrame}
         />

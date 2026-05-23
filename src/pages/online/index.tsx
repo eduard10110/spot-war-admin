@@ -4,16 +4,7 @@ import OnlineGameController from "@controllers/onlineGame";
 import type { OnlineLevelModalState } from "@helpers/types/admin";
 import type { OnlineGameLevel } from "@helpers/types/backend";
 import OnlineLevelModal from "@modals/OnlineLevelModal";
-import {
-  Button,
-  Image,
-  Popover,
-  Space,
-  Switch,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+import { Button, Space, Switch, Table, Tag, Typography } from "antd";
 import {
   startTransition,
   useCallback,
@@ -59,36 +50,36 @@ export default function Online() {
         sorter: (a: OnlineGameLevel, b: OnlineGameLevel) => a.order - b.order,
       },
       { title: "Name", dataIndex: "name" as const, ellipsis: true },
-      {
-        title: "Original",
-        dataIndex: "referenceUri" as const,
-        width: 100,
-        render: (uri: string) => (
-          <Popover content={<Image src={uri} width={320} alt="" />}>
-            <img
-              src={uri}
-              alt=""
-              className="h-12 w-20 rounded object-cover"
-              title="Original"
-            />
-          </Popover>
-        ),
-      },
-      {
-        title: "With differences",
-        dataIndex: "imageUri" as const,
-        width: 120,
-        render: (uri: string) => (
-          <Popover content={<Image src={uri} width={320} alt="" />}>
-            <img
-              src={uri}
-              alt=""
-              className="h-12 w-20 rounded object-cover"
-              title="Playfield"
-            />
-          </Popover>
-        ),
-      },
+      // {
+      //   title: "Original",
+      //   dataIndex: "referenceUri" as const,
+      //   width: 100,
+      //   render: (uri: string) => (
+      //     <Popover content={<Image src={uri} width={320} alt="" />}>
+      //       <img
+      //         src={uri}
+      //         alt=""
+      //         className="h-12 w-20 rounded object-cover"
+      //         title="Original"
+      //       />
+      //     </Popover>
+      //   ),
+      // },
+      // {
+      //   title: "With differences",
+      //   dataIndex: "imageUri" as const,
+      //   width: 120,
+      //   render: (uri: string) => (
+      //     <Popover content={<Image src={uri} width={320} alt="" />}>
+      //       <img
+      //         src={uri}
+      //         alt=""
+      //         className="h-12 w-20 rounded object-cover"
+      //         title="Playfield"
+      //       />
+      //     </Popover>
+      //   ),
+      // },
       {
         title: "Spots",
         key: "spots",
